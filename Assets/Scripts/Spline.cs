@@ -4,15 +4,42 @@ using UnityEngine;
 
 public class Spline : MonoBehaviour
 {
+    [SerializeField, HideInInspector]
     private readonly List<Vector3> points = new List<Vector3>();
     public IReadOnlyList<Vector3> Points => points;
 
     private void Reset()
     {
-        points.Add(new Vector3(0f, 0f, 0f));
-        points.Add(new Vector3(1f, 0f, 0f));
-        points.Add(new Vector3(2f, 0f, 0f));
-        points.Add(new Vector3(3f, 0f, 0f));
+        points.Add(new Vector3(-3f, 0f, -3f));
+        points.Add(new Vector3(-3f, 0f, 3f));
+        points.Add(new Vector3(3f, 0f, -3f));
+        points.Add(new Vector3(3f, 0f, 3f));
+    }
+
+    public void OnDrawGizmosSelected()
+    {
+        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.05f);
+        for (int i = 0; i < points.Count; i++)
+        {
+            bounds.Encapsulate(points[i] + transform.position);
+        }
+        bounds.Expand(Vector3.one * 0.05f);
+        Gizmos.matrix = Matrix4x4.identity;
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireCube(bounds.center, bounds.size);
+    }
+
+    private void OnDrawGizmos()
+    {
+        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.05f);
+        for (int i = 0; i < points.Count; i++)
+        {
+            bounds.Encapsulate(points[i] + transform.position);
+        }
+        bounds.Expand(Vector3.one * 0.05f);
+        Gizmos.matrix = Matrix4x4.identity;
+        Gizmos.color = Color.gray;
+        Gizmos.DrawWireCube(bounds.center, bounds.size);
     }
 
     public void SetPoint(int index, Vector3 localPoint)
