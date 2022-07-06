@@ -2,70 +2,174 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Spline : MonoBehaviour
+[Serializable]
+public class Spline
 {
     [SerializeField, HideInInspector]
-    private readonly List<Vector3> points = new List<Vector3>();
-    public IReadOnlyList<Vector3> Points => points;
+    private List<Vector3> points = new List<Vector3>();
 
-    private void Reset()
+    public bool IsClosed;
+
+    public Spline()
     {
-        points.Add(new Vector3(-3f, 0f, -3f));
-        points.Add(new Vector3(-3f, 0f, 3f));
-        points.Add(new Vector3(3f, 0f, -3f));
-        points.Add(new Vector3(3f, 0f, 3f));
+        AddDefaultSegment();
     }
 
-    public void OnDrawGizmosSelected()
+    public void AddDefaultSegment()
     {
-        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.05f);
-        for (int i = 0; i < points.Count; i++)
+        points.Add(new Vector3(-2f, 0f,  0f));
+        points.Add(new Vector3(-1f, 0f,  2f));
+        points.Add(new Vector3( 1f, 0f, -2f));
+        points.Add(new Vector3( 2f, 0f,  0f));
+    }
+
+    public void AddSegment(Vector3 newAnchorPoint)
+    {
+        // Add three new points to the spline:
+        //  1) newControlPoint1 = a point that mirrors the prior control point relative to its anchor point
+        //  2) newControlPoint2 = a point that is halfway between the newControlPoint1 and the newAnchorPoint
+        //  3) newAnchorPoint
+        Vector3 priorControlPoint = points[points.Count - 2];
+        Vector3 lastAnchorPoint = points[points.Count - 1];
+        Vector3 newControlPoint1 = lastAnchorPoint * 2 - priorControlPoint;
+        Vector3 newControlPoint2 = (newControlPoint1 + newAnchorPoint) * 0.5f;
+        points.Add(newControlPoint1);
+        points.Add(newControlPoint2);
+        points.Add(newAnchorPoint);
+    }
+
+    public void SplitSegment(Vector3 newAnchorPoint, int segmentIndex)
+    {
+        int anchorIndex = segmentIndex * 3;
+        var newPoints = new Vector3[] { Vector3.one, newAnchorPoint, -Vector3.one };
+        points.InsertRange(anchorIndex + 2, newPoints);
+        anchorIndex = (segmentIndex + 1) * 3;
+        UpdateHandles(anchorIndex);
+    }
+
+    public void DeleteSegment(int segmentIndex)
+    {
+        if (IsClosed)
         {
-            bounds.Encapsulate(points[i] + transform.position);
+            // TODO
         }
-        bounds.Expand(Vector3.one * 0.05f);
-        Gizmos.matrix = Matrix4x4.identity;
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireCube(bounds.center, bounds.size);
+        else
+        {
+            int anchorIndex = segmentIndex * 3;
+            points.RemoveRange(anchorIndex, 3);
+        }
     }
 
-    private void OnDrawGizmos()
+    public Vector3 this[int pointIndex]
     {
-        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.05f);
-        for (int i = 0; i < points.Count; i++)
-        {
-            bounds.Encapsulate(points[i] + transform.position);
-        }
-        bounds.Expand(Vector3.one * 0.05f);
-        Gizmos.matrix = Matrix4x4.identity;
-        Gizmos.color = Color.gray;
-        Gizmos.DrawWireCube(bounds.center, bounds.size);
+        get => points[pointIndex];
+        set => points[pointIndex] = value;
     }
 
-    public void SetPoint(int index, Vector3 localPoint)
-    {
-        if (index < 0 || index >= points.Count)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
-        points[index] = localPoint;
-    }
+    public int PointCount => points.Count;
+
+    public int SegmentCount => points.Count / 3;
+
+    public int PointIndex(int i) => (i + points.Count) % points.Count;
 
     public Vector3 GetPointAt(float t)
     {
         if (points.Count < 4) return Vector3.zero;
-        Vector3 p = GetPointOnBezierCurve(points[0], points[1], points[2], points[3], t);
-        return transform.TransformPoint(p);
+        int segmentIndex = Mathf.FloorToInt(t * (SegmentCount - 1));
+        t = Mathf.Repeat(t * SegmentCount, 1f);
+        return GetPointAt(segmentIndex, t);
     }
 
     public Vector3 GetVelocityAt(float t)
     {
         if (points.Count < 4) return Vector3.right;
-        Vector3 dir = GetFirstDerivativeOnBezierCurve(points[0], points[1], points[2], points[3], t);
-        return transform.TransformVector(dir);
+        int segmentIndex = Mathf.FloorToInt(t * (SegmentCount - 1));
+        t = Mathf.Repeat(t * SegmentCount, 1f);
+        return GetVelocityAt(segmentIndex, t);
     }
 
     public Vector3 GetDirectionAt(float t) => GetVelocityAt(t).normalized;
+
+    public Vector3 GetPointAt(int segmentIndex, float t)
+    {
+        if (points.Count < 4) return Vector3.zero;
+        int i = segmentIndex * 3;
+        Vector3 p = GetPointOnBezierCurve(points[i], points[i + 1], points[i + 2], points[i + 3], t);
+        return p;
+    }
+
+    public Vector3 GetVelocityAt(int segmentIndex, float t)
+    {
+        if (points.Count < 4) return Vector3.right;
+        int i = segmentIndex * 3;
+        Vector3 dir = GetFirstDerivativeOnBezierCurve(points[i], points[i+1], points[i+2], points[i+3], t);
+        return dir;
+    }
+
+    public Vector3 GetDirectionAt(int segmentIndex, float t) => GetVelocityAt(segmentIndex, t).normalized;
+
+    public void MovePoint(int pointIndex, Vector3 pos, bool updateHandles)
+    {
+        Vector3 deltaMove = pos - points[pointIndex];
+        points[pointIndex] = pos;
+        if (!updateHandles) return;
+        int localIndex = (pointIndex % 3);
+        if (localIndex == 0) // Moving an anchor point
+        {
+            UpdateHandles(pointIndex);
+        }
+        else if (pointIndex > 0 && pointIndex < PointCount - 2)
+        {
+            // Mirror the movement on the other handle
+            if (localIndex == 1)
+            {
+                pointIndex = PointIndex(pointIndex - 2);
+            }
+            else if (localIndex == 2)
+            {
+                pointIndex = PointIndex(pointIndex + 2);
+            }
+            points[pointIndex] -= deltaMove;
+        }
+    }
+
+    private void UpdateHandles(int anchorIndex)
+    {
+        Vector3 anchorPos = points[anchorIndex];
+        Vector3 tangentDirection = Vector3.zero;
+
+        int prevAnchorIndex = anchorIndex - 3;
+        float prevNeighborDistance = 0f;
+        if (prevAnchorIndex >= 0 || IsClosed)
+        {
+            Vector3 offset = points[PointIndex(prevAnchorIndex)] - anchorPos;
+            tangentDirection += offset.normalized;
+            prevNeighborDistance = offset.magnitude;
+        }
+
+        int nextAnchorIndex = anchorIndex + 3;
+        float nextNeighborDistance = 0f;
+        if (nextAnchorIndex < PointCount || IsClosed)
+        {
+            Vector3 offset = points[PointIndex(nextAnchorIndex)] - anchorPos;
+            tangentDirection -= offset.normalized;
+            nextNeighborDistance = -offset.magnitude;
+        }
+
+        tangentDirection.Normalize();
+
+        int prevControlIndex = anchorIndex - 1;
+        if (prevControlIndex >= 0 || IsClosed)
+        {
+            points[PointIndex(prevControlIndex)] = anchorPos + tangentDirection * (prevNeighborDistance * 0.5f);
+        }
+
+        int nextControlIndex = anchorIndex + 1;
+        if (nextControlIndex < points.Count || IsClosed)
+        {
+            points[PointIndex(nextControlIndex)] = anchorPos + tangentDirection * (nextNeighborDistance * 0.5f);
+        }
+    }
 
     private static Vector3 GetPointOnQuadraticCurve(Vector3 p0, Vector3 p1, Vector3 p2, float t)
     {
@@ -108,16 +212,4 @@ public class Spline : MonoBehaviour
                6f * oneMinusT * t * (p2 - p1) +
                3f * t * t * (p3 - p2);
     }
-
-    #region IGNORE ME
-    
-    [Range(0f, 1f)]
-    public float T;
-
-    private void OnGUI()
-    {
-        T = GUI.HorizontalSlider(new Rect(25f, 25f, 100f, 30f), T, 0f, 1f);
-    }
-
-    #endregion
 }
