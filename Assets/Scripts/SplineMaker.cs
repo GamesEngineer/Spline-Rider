@@ -58,13 +58,21 @@ public class SplineMaker : MonoBehaviour
         set => spline[pointIndex] = transform.InverseTransformPoint(value);
     }
 
-    public Vector3 GetPointAt(float t) => transform.TransformPoint(spline.GetPointAt(t));
-    public Vector3 GetPointAt(int segmentIndex, float t) => transform.TransformPoint(spline.GetPointAt(segmentIndex, t));
-    public Vector3 GetVelocityAt(float t) => transform.TransformDirection(spline.GetVelocityAt(t));
-    public Vector3 GetVelocityAt(int segmentIndex, float t) => transform.TransformDirection(spline.GetVelocityAt(segmentIndex, t));
-    public Vector3 GetDirectionAt(float t) => transform.TransformDirection(spline.GetDirectionAt(t));
-    public Vector3 GetDirectionAt(int segmentIndex, float t) => transform.TransformDirection(spline.GetDirectionAt(segmentIndex, t));
-    public void MovePoint(int pointIndex, Vector3 newPositionWS, bool updateHandles) => spline.MovePoint(pointIndex, transform.InverseTransformPoint(newPositionWS), updateHandles);
-    public void SplitSegment(Vector3 pointWS, int segmentIndex) => spline.SplitSegment(transform.InverseTransformPoint(pointWS), segmentIndex);
+    public Vector3 GetPointAt(float t)
+        => transform.TransformPoint(spline.GetPointAt(t));
+    public Vector3 GetPointAt(int segmentIndex, float t)
+        => transform.TransformPoint(spline.GetPointAt(segmentIndex, t));
+    public Vector3 GetVelocityAt(float t)
+        => transform.TransformDirection(spline.GetVelocityAt(t));
+    public Vector3 GetVelocityAt(int segmentIndex, float t)
+        => transform.TransformDirection(spline.GetVelocityAt(segmentIndex, t));
+    public Vector3 GetDirectionAt(float t)
+        => transform.TransformDirection(spline.GetDirectionAt(t));
+    public Vector3 GetDirectionAt(int segmentIndex, float t)
+        => transform.TransformDirection(spline.GetDirectionAt(segmentIndex, t));
+    public void MovePoint(int pointIndex, Vector3 newPositionWS, bool updateHandles)
+        => spline.MovePoint(pointIndex, transform.InverseTransformPoint(newPositionWS), updateHandles);
+    public void SplitSegment(Vector3 pointWS, int segmentIndex)
+        => spline.SplitSegment(transform.InverseTransformPoint(pointWS), segmentIndex);
     public void AddSegment(Vector3 pointWS) => spline.AddSegment(transform.InverseTransformPoint(pointWS));
 }

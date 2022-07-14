@@ -49,6 +49,8 @@ public class Spline
 
     public void DeleteSegment(int segmentIndex)
     {
+        if (SegmentCount <= 1) return;
+
         if (IsClosed)
         {
             // TODO
@@ -75,8 +77,9 @@ public class Spline
     public Vector3 GetPointAt(float t)
     {
         if (points.Count < 4) return Vector3.zero;
-        int segmentIndex = Mathf.FloorToInt(t * (SegmentCount - 1));
-        t = Mathf.Repeat(t * SegmentCount, 1f);
+        float s = Mathf.Clamp(t * SegmentCount, 0, (float)SegmentCount - 1.0e-5f);
+        int segmentIndex = Mathf.FloorToInt(s);
+        t = Mathf.Repeat(s, 1f);
         return GetPointAt(segmentIndex, t);
     }
 
@@ -112,23 +115,32 @@ public class Spline
     {
         Vector3 deltaMove = pos - points[pointIndex];
         points[pointIndex] = pos;
+
         if (!updateHandles) return;
+
         int localIndex = (pointIndex % 3);
         if (localIndex == 0) // Moving an anchor point
         {
             UpdateHandles(pointIndex);
         }
-        else if (pointIndex > 0 && pointIndex < PointCount - 2)
+        else if (pointIndex > 1 && pointIndex < PointCount - 2)
         {
             // Mirror the movement on the other handle
+
+            // First, get the index of the other handle
             if (localIndex == 1)
             {
-                pointIndex = PointIndex(pointIndex - 2);
+                pointIndex -= 2;
             }
             else if (localIndex == 2)
             {
-                pointIndex = PointIndex(pointIndex + 2);
+                pointIndex += 2;
             }
+
+            // Then move it in the opposite (mirrored) direction
+            // CHALLENGE: FIXME! Notice how the mirrored movement
+            // doesn't keep the handles in line with their anchor.
+            // Why? Can you fix it?
             points[pointIndex] -= deltaMove;
         }
     }
