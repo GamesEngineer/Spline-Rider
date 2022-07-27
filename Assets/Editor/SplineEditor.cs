@@ -51,7 +51,7 @@ public class SplineEditor : Editor
 
         if (guiEvent.type == EventType.MouseMove)
 		{
-			UpdateSelectedSegment(nearestPoint); // START HERE NEXT TIME 07/19/2022
+			UpdateSelectedSegment(nearestPoint);
 		}
 
         #region Operations
@@ -76,7 +76,7 @@ public class SplineEditor : Editor
 			if (selectedSegmentIndex >= 0 && guiEvent.control)
 			{
 				Undo.RecordObject(splineMaker, "Delete segment");
-				splineMaker.spline.DeleteSegment(selectedSegmentIndex);
+				splineMaker.DeleteSegment(selectedSegmentIndex);
 				Event.current.Use();
 			}
 		}
@@ -140,7 +140,7 @@ public class SplineEditor : Editor
 
 	private Vector3 GetControlPoint(int segmentIndex, int pointIndex)
     {
-		return splineMaker.spline[segmentIndex * 3 + pointIndex];
+		return splineMaker[segmentIndex * 3 + pointIndex];
     }
 
 	private Vector3 UpdateControlPoint(int segmentIndex, int pointIndex)
@@ -153,7 +153,7 @@ public class SplineEditor : Editor
 			return splineMaker[pointIndex];
         }
 		#endregion
-		Vector3 point = handleTransform.TransformPoint(splineMaker[pointIndex]);
+		Vector3 point = splineMaker[pointIndex]; // FIXED 7/19/2022
 		EditorGUI.BeginChangeCheck();
 		float handleSize = SplineMaker.ANCHOR_SIZE + 0.1f; // HandleUtility.GetHandleSize(point) * 0.1f;
 		if ((pointIndex % 3) != 0) handleSize *= 0.5f; // make the handles smaller than the anchor points
@@ -171,7 +171,7 @@ public class SplineEditor : Editor
 	private void UpdateSelectedSegment(Vector3 selectionPointWS)
     {
 		Vector3 selectionPoint = handleTransform.InverseTransformPoint(selectionPointWS);
-		float minDistance = 10f;
+		float minDistance = 100f;
 		highlightedSegmentIndex = -1;
 		for (int segmentIndex = 0; segmentIndex < splineMaker.spline.SegmentCount; segmentIndex++)
         {
@@ -183,9 +183,7 @@ public class SplineEditor : Editor
 			Vector3 endPosition = splineMaker.spline[endPointIndex];
 			Vector3 startHandle = splineMaker.spline[startHandleIndex];
 			Vector3 endHandle = splineMaker.spline[endHandleIndex];
-			Vector3 startTangent = startHandle;
-			Vector3 endTangent = endHandle;
-			float distance = HandleUtility.DistancePointBezier(selectionPoint, startPosition, endPosition, startTangent, endTangent);
+			float distance = HandleUtility.DistancePointBezier(selectionPoint, startPosition, endPosition, startHandle, endHandle);
 			if (distance < minDistance)
             {
 				minDistance = distance;

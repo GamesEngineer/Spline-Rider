@@ -1,12 +1,13 @@
+using System;
 using UnityEngine;
 
 public class SplineMaker : MonoBehaviour
 {
-    [SerializeField, HideInInspector]
     public Spline spline;
 
     public const int NUM_LINE_STEPS = 20;
     public const float ANCHOR_SIZE = 0.5f;
+    public event Action OnChanged;
 
     private void Awake()
     {
@@ -22,7 +23,6 @@ public class SplineMaker : MonoBehaviour
     {
         if (spline == null) return;
 
-        //DrawGizmosBounds(Color.gray);
         Gizmos.color = Color.white;
         for (int segmentIndex = 0; segmentIndex < spline.SegmentCount; segmentIndex++)
         {
@@ -39,23 +39,14 @@ public class SplineMaker : MonoBehaviour
         Gizmos.DrawSphere(GetPointAt(spline.SegmentCount - 1, 1f), ANCHOR_SIZE);
     }
 
-    private void DrawGizmosBounds(Color color)
-    {
-        Gizmos.color = color;
-        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.05f);
-        for (int i = 0; i < spline.PointCount; i++)
-        {
-            bounds.Encapsulate(transform.TransformPoint(spline[i]));
-        }
-        bounds.Expand(Vector3.one * 0.05f);
-        Gizmos.matrix = Matrix4x4.identity;
-        Gizmos.DrawWireCube(bounds.center, bounds.size);
-    }
-
     public Vector3 this[int pointIndex]
     {
         get => transform.TransformPoint(spline[pointIndex]);
-        set => spline[pointIndex] = transform.InverseTransformPoint(value);
+        set
+        {
+            spline[pointIndex] = transform.InverseTransformPoint(value);
+            OnChanged?.Invoke();
+        }
     }
 
     public Vector3 GetPointAt(float t)
@@ -70,9 +61,28 @@ public class SplineMaker : MonoBehaviour
         => transform.TransformDirection(spline.GetDirectionAt(t));
     public Vector3 GetDirectionAt(int segmentIndex, float t)
         => transform.TransformDirection(spline.GetDirectionAt(segmentIndex, t));
+
     public void MovePoint(int pointIndex, Vector3 newPositionWS, bool updateHandles)
-        => spline.MovePoint(pointIndex, transform.InverseTransformPoint(newPositionWS), updateHandles);
+    {
+        spline.MovePoint(pointIndex, transform.InverseTransformPoint(newPositionWS), updateHandles);
+        OnChanged?.Invoke();
+    }
+
     public void SplitSegment(Vector3 pointWS, int segmentIndex)
-        => spline.SplitSegment(transform.InverseTransformPoint(pointWS), segmentIndex);
-    public void AddSegment(Vector3 pointWS) => spline.AddSegment(transform.InverseTransformPoint(pointWS));
+    {
+        spline.SplitSegment(transform.InverseTransformPoint(pointWS), segmentIndex);
+        OnChanged?.Invoke();
+    }
+
+    public void AddSegment(Vector3 pointWS)
+    {
+        spline.AddSegment(transform.InverseTransformPoint(pointWS));
+        OnChanged?.Invoke();
+    }
+
+    public void DeleteSegment(int segmentIndex)
+    {
+        spline.DeleteSegment(segmentIndex);
+        OnChanged?.Invoke();
+    }
 }
