@@ -5,7 +5,7 @@ public class SplineMaker : MonoBehaviour
 {
     public Spline spline;
 
-    public const int NUM_LINE_STEPS = 20;
+    public const int NUM_LINE_STEPS = 200;
     public const float ANCHOR_SIZE = 0.5f;
     public event Action OnChanged;
 

@@ -8,7 +8,7 @@ public class Spline
     [SerializeField, HideInInspector]
     private List<Vector3> points = new List<Vector3>();
 
-    public bool IsClosed;
+    public bool IsClosed; // CHALLENGE! Implement the ability to automatically maintain closed-loop splines.
 
     public Spline()
     {
@@ -32,7 +32,7 @@ public class Spline
         Vector3 priorControlPoint = points[points.Count - 2];
         Vector3 lastAnchorPoint = points[points.Count - 1];
         Vector3 newControlPoint1 = lastAnchorPoint * 2 - priorControlPoint;
-        Vector3 newControlPoint2 = (newControlPoint1 + newAnchorPoint) * 0.5f;
+        Vector3 newControlPoint2 = (newControlPoint1 + newAnchorPoint) / 2f;
         points.Add(newControlPoint1);
         points.Add(newControlPoint2);
         points.Add(newAnchorPoint);
@@ -53,7 +53,7 @@ public class Spline
 
         if (IsClosed)
         {
-            // TODO
+            // TODO - what if the segment is the one that closes the loop?
         }
         else
         {
@@ -105,8 +105,8 @@ public class Spline
     {
         if (points.Count < 4) return Vector3.right;
         int i = segmentIndex * 3;
-        Vector3 dir = GetFirstDerivativeOnBezierCurve(points[i], points[i+1], points[i+2], points[i+3], t);
-        return dir;
+        Vector3 v = GetFirstDerivativeOnBezierCurve(points[i], points[i+1], points[i+2], points[i+3], t);
+        return v;
     }
 
     public Vector3 GetDirectionAt(int segmentIndex, float t) => GetVelocityAt(segmentIndex, t).normalized;

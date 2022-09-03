@@ -1,3 +1,5 @@
+#define ADD_GUARDRAILS
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -29,10 +31,17 @@ public class SplineMesh : MonoBehaviour
             meshFilter.sharedMesh = new Mesh();
             meshFilter.hideFlags = HideFlags.HideInInspector;
         }
-        splineMaker.OnChanged += SplineMaker_OnChanged;
+        // DO NOT subscribe to splineMaker.OnChanged here, since Awake is not called when a script is recompiled (it is called on scene reload, though)
     }
 
-    private void OnDestroy()
+    // FIXED issues with event subscription by adding/removing the subscription in OnEnable/OnDisable
+    private void OnEnable()
+    {
+        splineMaker.OnChanged += SplineMaker_OnChanged;
+        
+    }
+
+    private void OnDisable()
     {
         splineMaker.OnChanged -= SplineMaker_OnChanged;
     }
@@ -106,10 +115,21 @@ public class SplineMesh : MonoBehaviour
         Vector3 offset = right * (width / 2f);
         Vector3 posL = pos - offset;
         Vector3 posR = pos + offset;
-        Vector2 uvL = new Vector2(t, 0f);
-        Vector2 uvR = new Vector2(t, 1f);
+        Vector2 uvLi = new Vector2(0.08f, t);
+        Vector2 uvRi = new Vector2(0.92f, t);
+        Vector2 uvL = new Vector2(0f, t);
+        Vector2 uvR = new Vector2(1f, t);
+#if ADD_GUARDRAILS
+        AddVertex(posL - right * 25f - up * 5f, uvL, up);
+        AddVertex(posL + up, uvLi, up);
+        AddVertex(posL, uvLi, up);
+        AddVertex(posR, uvRi, up);
+        AddVertex(posR + up, uvRi, up);
+        AddVertex(posR + right * 25f - up * 5f, uvR, up);
+#else
         AddVertex(posL, uvL, up);
         AddVertex(posR, uvR, up);
+#endif
     }
 
     private void BuildSegment(int segmentIndex)
@@ -124,11 +144,43 @@ public class SplineMesh : MonoBehaviour
             // Add the quadrilateral for this sub-segment
             if (i > 0)
             {
+#if ADD_GUARDRAILS
+                //  v6--v7-v8-----v9-v10-v11
+                //  |    | |       | |   |
+                //  |    | |       | |   |
+                //  |    | |       | |   |
+                //  |    | |       | |   |
+                //  v0--v1-v2-----v3-v4--v5
+                int vi11 = vertices.Count - 1;
+                int vi10 = vi11 - 1;
+                int vi9 = vi10 - 1;
+                int vi8 = vi9 - 1;
+                int vi7 = vi8 - 1;
+                int vi6 = vi7 - 1;
+                int vi5 = vi6 - 1;
+                int vi4 = vi5 - 1;
+                int vi3 = vi4 - 1;
+                int vi2 = vi3 - 1;
+                int vi1 = vi2 - 1;
+                int vi0 = vi1 - 1;
+                AddQuadrilateral(vi0, vi1, vi6, vi7);
+                AddQuadrilateral(vi1, vi2, vi7, vi8);
+                AddQuadrilateral(vi2, vi3, vi8, vi9);
+                AddQuadrilateral(vi3, vi4, vi9, vi10);
+                AddQuadrilateral(vi4, vi5, vi10, vi11);
+#else
+                //  v2 -- v3
+                //  | \   |
+                //  |  \  |
+                //  |   \ |
+                //  |    \|
+                //  v0 -- v1
                 int vi3 = vertices.Count - 1;
                 int vi2 = vi3 - 1;
                 int vi1 = vi2 - 1;
                 int vi0 = vi1 - 1;
                 AddQuadrilateral(vi0, vi1, vi2, vi3);
+#endif
             }
         }
     }    

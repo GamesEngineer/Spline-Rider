@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using System;
 
 [CustomEditor(typeof(SplineMaker))]
 public class SplineEditor : Editor
@@ -13,7 +14,6 @@ public class SplineEditor : Editor
     #region IGNORE
     private bool showInterpolations;
 	private float tParam;
-    #endregion
 
     // Called when a user makes a change in Unity's "Inspector" window
     public override void OnInspectorGUI()
@@ -34,6 +34,8 @@ public class SplineEditor : Editor
         }
     }
 
+    #endregion
+
 	// Called when a user makes a change in Unity's "Scene View"
 	private void OnSceneGUI()
 	{
@@ -51,7 +53,7 @@ public class SplineEditor : Editor
 
         if (guiEvent.type == EventType.MouseMove)
 		{
-			UpdateSelectedSegment(nearestPoint);
+			UpdateSelectedSegment(ray, nearestPoint);
 		}
 
         #region Operations
@@ -153,7 +155,7 @@ public class SplineEditor : Editor
 			return splineMaker[pointIndex];
         }
 		#endregion
-		Vector3 point = splineMaker[pointIndex]; // FIXED 7/19/2022
+		Vector3 point = splineMaker[pointIndex];
 		EditorGUI.BeginChangeCheck();
 		float handleSize = SplineMaker.ANCHOR_SIZE + 0.1f; // HandleUtility.GetHandleSize(point) * 0.1f;
 		if ((pointIndex % 3) != 0) handleSize *= 0.5f; // make the handles smaller than the anchor points
@@ -162,36 +164,37 @@ public class SplineEditor : Editor
 		if (EditorGUI.EndChangeCheck())
 		{
 			Undo.RecordObject(splineMaker, "Move spline point");
-			EditorUtility.SetDirty(splineMaker);
+			//EditorUtility.SetDirty(splineMaker); // UNNECESSARY
 			splineMaker.MovePoint(pointIndex, point, updateHandles: !Event.current.control);
 		}
 		return point;
 	}
 
-	private void UpdateSelectedSegment(Vector3 selectionPointWS)
-    {
-		Vector3 selectionPoint = handleTransform.InverseTransformPoint(selectionPointWS);
-		float minDistance = 100f;
+	private void UpdateSelectedSegment(Ray ray, Vector3 selectionPointWS)
+	{
+		// Find the control point that is closest to the ray, and use its index to determine its segment.
 		highlightedSegmentIndex = -1;
-		for (int segmentIndex = 0; segmentIndex < splineMaker.spline.SegmentCount; segmentIndex++)
-        {
-			int startPointIndex = segmentIndex * 3;
-			int startHandleIndex = startPointIndex + 1;
-			int endHandleIndex = startPointIndex + 2;
-			int endPointIndex = startPointIndex + 3;
-			Vector3 startPosition = splineMaker.spline[startPointIndex];
-			Vector3 endPosition = splineMaker.spline[endPointIndex];
-			Vector3 startHandle = splineMaker.spline[startHandleIndex];
-			Vector3 endHandle = splineMaker.spline[endHandleIndex];
-			float distance = HandleUtility.DistancePointBezier(selectionPoint, startPosition, endPosition, startHandle, endHandle);
+		float minDistance = float.MaxValue;
+		for (int cpIndex = 0; cpIndex < splineMaker.spline.PointCount; cpIndex++)
+		{
+			Vector3 p = splineMaker[cpIndex];
+			float d = Vector3.Dot(ray.direction, (p - ray.origin));
+			if (d < 0f) continue; // ignore points behind the camera
+			Vector3 nearestPointOnRay = ray.origin + ray.direction * d;
+			float distance = Vector3.Distance(nearestPointOnRay, p);
 			if (distance < minDistance)
-            {
+			{
 				minDistance = distance;
-				highlightedSegmentIndex = segmentIndex;
-            }
-        }
+				highlightedSegmentIndex = cpIndex / 3;
+			}
+		}
+		
+		if (highlightedSegmentIndex == splineMaker.spline.SegmentCount)
+		{
+			highlightedSegmentIndex--;
+		}
 
-		if (highlightedSegmentIndex >= 0)
+        if (highlightedSegmentIndex >= 0)
 		{
 			selectedSegmentIndex = highlightedSegmentIndex;
 		}
