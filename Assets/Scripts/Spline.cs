@@ -150,7 +150,7 @@ public class Spline
         Vector3 anchorPos = points[anchorIndex];
         Vector3 tangentDirection = Vector3.zero;
 
-        int prevControlIndex = anchorIndex - 2; // CHANGED 7/19/2022
+        int prevControlIndex = anchorIndex - 2;
         float prevNeighborDistance = 0f;
         if (prevControlIndex >= 0 || IsClosed)
         {
@@ -159,7 +159,7 @@ public class Spline
             prevNeighborDistance = offset.magnitude;
         }
 
-        int nextControlIndex = anchorIndex + 2; // CHANGED 7/19/2022
+        int nextControlIndex = anchorIndex + 2;
         float nextNeighborDistance = 0f;
         if (nextControlIndex < PointCount || IsClosed)
         {
@@ -170,13 +170,13 @@ public class Spline
 
         tangentDirection.Normalize();
 
-        prevControlIndex = anchorIndex - 1; // CHANGED 7/19/2022
+        prevControlIndex = anchorIndex - 1;
         if (prevControlIndex >= 0 || IsClosed)
         {
             points[PointIndex(prevControlIndex)] = anchorPos + tangentDirection * (prevNeighborDistance * 0.5f);
         }
 
-        nextControlIndex = anchorIndex + 1; // CHANGED 7/19/2022
+        nextControlIndex = anchorIndex + 1;
         if (nextControlIndex < points.Count || IsClosed)
         {
             points[PointIndex(nextControlIndex)] = anchorPos + tangentDirection * (nextNeighborDistance * 0.5f);
